@@ -26,5 +26,5 @@ jobs:
       - name: Deploy Firebase Functions
         run: firebase deploy --only functions:download_timefree
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: "${PWD}/cred.json"
+          GOOGLE_APPLICATION_CREDENTIALS: "cred.json"
         
