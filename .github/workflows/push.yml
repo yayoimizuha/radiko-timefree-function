@@ -19,7 +19,12 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Set firebase credential
+        run: echo "${GOOGLE_APPLICATION_CREDENTIALS}" > ./cred.json
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{secrets.GOOGLE_APPLICATION_CREDENTIALS}}
       - name: Deploy Firebase Functions
         run: firebase deploy --only functions:download_timefree
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{secrets.GOOGLE_APPLICATION_CREDENTIALS}}
+          GOOGLE_APPLICATION_CREDENTIALS: "${PWD}/cred.json"
+        
