@@ -13,7 +13,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 initialize_app()
-options.set_global_options(region=options.SupportedRegion.ASIA_NORTHEAST1)
+options.set_global_options(region=options.SupportedRegion.ASIA_NORTHEAST1,memory=options.MemoryOption.MB_512)
 
 
 class MyLogger:
