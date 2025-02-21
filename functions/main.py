@@ -5,15 +5,16 @@ from os import path
 import requests
 import yt_dlp
 from bs4 import BeautifulSoup
-from firebase_functions import https_fn,options
+from firebase_functions import https_fn, options
 from firebase_admin import initialize_app, storage, firestore
 from yt_dlp import DownloadError
-import logging 
+import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 initialize_app()
 options.set_global_options(region=options.SupportedRegion.ASIA_NORTHEAST1)
+
 
 class MyLogger:
     def debug(self, msg):
@@ -31,6 +32,7 @@ class MyLogger:
     def error(self, msg):
         logger.error(msg)
 
+
 @https_fn.on_request(timeout_sec=240)
 def download_timefree(req: https_fn.Request) -> https_fn.Response:
     if "ft" in req.args and "channel" in req.args:
@@ -44,7 +46,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response("ftのフォーマットが違います。RFC3339が必要です。", status=400)
     channel = req.args.get("channel")
     firestore_client = firestore.client(database_id="(default)")
-    
+
     if (full_xml := requests.get("https://radiko.jp/v3/station/region/full.xml")).status_code != 200:
         return https_fn.Response("https://radiko.jp/v3/station/region/full.xml が取得できません。",
                                  status=full_xml.status_code)
@@ -64,8 +66,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
     radiko_datetime_regex = re.compile(
         R"^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hours>\d{2})(?P<minutes>\d{2})(?P<seconds>\d{2})"
     )
-    if firestore_client.collection("hello-radiko-data", "archives", channel).document(program["ft_string"]).exists():
-        program = firestore_client.collection("hello-radiko-data", "archives", channel).document(program["ft_string"]).get()
+
     for item in date_json:
         if program is not None:
             break
@@ -91,8 +92,13 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
                     "tsplus_out_ng": item["tsplus_out_ng"],
                     "program_finished": datetime.now(tz=timezone(offset=timedelta(hours=+9), name="JST")) < item_to
                 }
-                
-    if program is None:
+    if firestore_client.collection("hello-radiko-data", "archives", channel) \
+            .document(program["ft_string"]).get().exists:
+        firestore_doc = (firestore_client.collection("hello-radiko-data", "archives", channel)
+                         .document(program["ft_string"]).get().to_dict())
+        print("skipping...")
+
+    elif program is None:
         firestore_doc = {
             "status": "error",
             "reason": "指定された番組が存在しません。",
@@ -115,8 +121,8 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
         with tempfile.TemporaryDirectory() as temp_dir:
             print(temp_dir)
             try:
-                with yt_dlp.YoutubeDL(
-                        params={"outtmpl": path.join(temp_dir, "program.m4a"), "format": "bestaudio","logger": MyLogger(), "verbose": True}) as dl:
+                with yt_dlp.YoutubeDL(params={"outtmpl": path.join(temp_dir, "program.m4a"), "format": "bestaudio",
+                                              "logger": MyLogger(), "verbose": True}) as dl:
                     dl.download([f"https://radiko.jp/#!/ts/{channel}/{program['ft_string']}"])
             except DownloadError as e:
                 firestore_doc = {
@@ -134,7 +140,8 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
                     "url": blob.public_url,
                     "code": 200
                 }
-    firestore_client.collection("hello-radiko-data", "archives", channel).document(program["ft_string"]).set(
-        firestore_doc)
+
+    firestore_client.collection("hello-radiko-data", "archives", channel) \
+        .document(program["ft_string"]).set(firestore_doc)
     print(firestore_doc)
     return https_fn.Response(firestore_doc["status"], status=firestore_doc["code"])
