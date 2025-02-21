@@ -43,6 +43,8 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
     else:
         return https_fn.Response("ftのフォーマットが違います。RFC3339が必要です。", status=400)
     channel = req.args.get("channel")
+    firestore_client = firestore.client(database_id="(default)")
+    
     if (full_xml := requests.get("https://radiko.jp/v3/station/region/full.xml")).status_code != 200:
         return https_fn.Response("https://radiko.jp/v3/station/region/full.xml が取得できません。",
                                  status=full_xml.status_code)
@@ -62,7 +64,11 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
     radiko_datetime_regex = re.compile(
         R"^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hours>\d{2})(?P<minutes>\d{2})(?P<seconds>\d{2})"
     )
+    if firestore_client.collection("hello-radiko-data", "archives", channel).document(program["ft_string"]).exists():
+        program = firestore_client.collection("hello-radiko-data", "archives", channel).document(program["ft_string"]).get()
     for item in date_json:
+        if program is not None:
+            break
         if ((item_ft := radiko_datetime_regex.match(item["ft"])) and
                 (item_to := radiko_datetime_regex.match(item["to"]))):
             item_ft = datetime(tzinfo=timezone(offset=timedelta(hours=+9), name="JST"),
@@ -85,7 +91,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
                     "tsplus_out_ng": item["tsplus_out_ng"],
                     "program_finished": datetime.now(tz=timezone(offset=timedelta(hours=+9), name="JST")) < item_to
                 }
-                break
+                
     if program is None:
         firestore_doc = {
             "status": "error",
@@ -128,7 +134,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
                     "url": blob.public_url,
                     "code": 200
                 }
-    firestore_client = firestore.client(database_id="(default)")
     firestore_client.collection("hello-radiko-data", "archives", channel).document(program["ft_string"]).set(
         firestore_doc)
+    print(firestore_doc)
     return https_fn.Response(firestore_doc["status"], status=firestore_doc["code"])
