@@ -1,0 +1,7 @@
+--extra-index-url https://427738.xyz/yt-dlp-rajiko/pip/
+yt-dlp-rajiko==v1.2
+firebase_functions~=0.1.0
+yt-dlp==2025.2.19
+beautifulsoup4==4.13.3
+lxml==5.3.1
+requests==2.32.3
