@@ -47,7 +47,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
     channel = req.args.get("channel")
     firestore_client = firestore.client(database_id="(default)")
     if ((day_exist := firestore_client.collection("hello-radiko-data", "archives", channel)
-            .document(ft.strftime("%Y%m%d%H%M%S")).get().exists) and \
+            .document(ft.strftime("%Y%m%d%H%M%S")).get().exists) or
             firestore_client.collection("hello-radiko-data", "archives", channel)
                     .document((ft - timedelta(days=1)).strftime("%Y%m%d") + f"{ft.hour + 24:02d}" + ft.strftime("%M%S"))
                     .get().exists):
@@ -130,7 +130,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
     else:
         print(program)
         with tempfile.TemporaryDirectory() as temp_dir:
-            print(temp_dir)
+            print({"output_directory": temp_dir})
             try:
                 with yt_dlp.YoutubeDL(params={"outtmpl": path.join(temp_dir, "program.m4a"), "format": "bestaudio",
                                               "logger": MyLogger(), "verbose": True}) as dl:
