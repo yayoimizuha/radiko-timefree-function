@@ -13,7 +13,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 initialize_app()
-options.set_global_options(region=options.SupportedRegion.ASIA_NORTHEAST1,memory=options.MemoryOption.MB_512)
+options.set_global_options(region=options.SupportedRegion.ASIA_NORTHEAST1, memory=options.MemoryOption.MB_512)
 
 
 class MyLogger:
@@ -46,6 +46,22 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response("ftのフォーマットが違います。RFC3339が必要です。", status=400)
     channel = req.args.get("channel")
     firestore_client = firestore.client(database_id="(default)")
+    if ((day_exist := firestore_client.collection("hello-radiko-data", "archives", channel)
+            .document(ft.strftime("%Y%m%d%H%M%S")).get().exists) and \
+            firestore_client.collection("hello-radiko-data", "archives", channel)
+                    .document((ft - timedelta(days=1)).strftime("%Y%m%d") + f"{ft.hour + 24:02d}" + ft.strftime("%M%S"))
+                    .get().exists):
+        if day_exist:
+            firestore_doc = (firestore_client.collection("hello-radiko-data", "archives", channel)
+                             .document(ft.strftime("%Y%m%d%H%M%S")).get().to_dict())
+        else:
+            firestore_doc = (firestore_client.collection("hello-radiko-data", "archives", channel)
+                             .document(
+                (ft - timedelta(days=1)).strftime("%Y%m%d") + f"{ft.hour + 24:02d}" + ft.strftime("%M%S")
+            ).get().to_dict())
+        if (firestore_doc["status"] == "success" or
+                (firestore_doc["status"] == "error" and firestore_doc["code"] != 404)):
+            return https_fn.Response(firestore_doc["status"], status=firestore_doc["code"])
 
     if (full_xml := requests.get("https://radiko.jp/v3/station/region/full.xml")).status_code != 200:
         return https_fn.Response("https://radiko.jp/v3/station/region/full.xml が取得できません。",
@@ -92,13 +108,8 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
                     "tsplus_out_ng": item["tsplus_out_ng"],
                     "program_finished": datetime.now(tz=timezone(offset=timedelta(hours=+9), name="JST")) < item_to
                 }
-    if firestore_client.collection("hello-radiko-data", "archives", channel) \
-            .document(program["ft_string"]).get().exists:
-        firestore_doc = (firestore_client.collection("hello-radiko-data", "archives", channel)
-                         .document(program["ft_string"]).get().to_dict())
-        print("skipping...")
 
-    elif program is None:
+    if program is None:
         firestore_doc = {
             "status": "error",
             "reason": "指定された番組が存在しません。",
