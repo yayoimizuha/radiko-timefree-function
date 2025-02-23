@@ -37,7 +37,7 @@ class MyLogger:
 
 def print_return(**kwargs) -> https_fn.Response:
     print(json.dumps(kwargs))
-    kwargs["response"] = json.dumps(kwargs["response"])
+    kwargs["response"] = json.dumps(kwargs["response"],ensure_ascii=False)
     return https_fn.Response(**kwargs,mimetype="application/json")
 
 
