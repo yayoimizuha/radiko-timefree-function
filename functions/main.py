@@ -33,17 +33,35 @@ class MyLogger:
         logger.error(msg)
 
 
+def print_wrapper(func):
+    def wrapper(*args, **kwargs):
+        res = func(*args, **kwargs)
+        print(res)
+        return res
+
+    return wrapper
+
+
 @https_fn.on_request(timeout_sec=240)
+@print_wrapper
 def download_timefree(req: https_fn.Request) -> https_fn.Response:
     if "ft" in req.args and "channel" in req.args:
         pass
     else:
-        return https_fn.Response("ラジオ局のID(channel)と番組の開始時刻(RFC3339による):(ft)が必要です。", status=400)
+        return https_fn.Response({
+            "status": "error",
+            "reason": "ラジオ局のID(channel)と番組の開始時刻(RFC3339による):(ft)が必要です。",
+            "code": 400
+        }, status=400)
     if ft_datetime := datetime.fromisoformat(req.args.get("ft")):
         # print(ft_datetime)
         ft = ft_datetime
     else:
-        return https_fn.Response("ftのフォーマットが違います。RFC3339が必要です。", status=400)
+        return https_fn.Response({
+            "status": "error",
+            "reason": "ftのフォーマットが違います。RFC3339が必要です。",
+            "code": 400
+        }, status=400)
     channel = req.args.get("channel")
     firestore_client = firestore.client(database_id="(default)")
     if ((day_exist := firestore_client.collection("hello-radiko-data", "archives", channel)
@@ -62,16 +80,23 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
         print({"exist entry": firestore_doc})
         if (firestore_doc["status"] == "success" or
                 (firestore_doc["status"] == "error" and firestore_doc["code"] != 404)):
-            return https_fn.Response(firestore_doc["status"], status=firestore_doc["code"])
+            return https_fn.Response(firestore_doc, status=firestore_doc["code"])
 
     if (full_xml := requests.get("https://radiko.jp/v3/station/region/full.xml")).status_code != 200:
-        return https_fn.Response("https://radiko.jp/v3/station/region/full.xml が取得できません。",
-                                 status=full_xml.status_code)
+        return https_fn.Response({
+            "status": "error",
+            "reason": "https://radiko.jp/v3/station/region/full.xml が取得できません。",
+            "code": full_xml.status_code
+        }, status=full_xml.status_code)
     full_xml = BeautifulSoup(full_xml.text, "xml")
     if channel in list(map(lambda tag: tag.text, full_xml.find_all("id"))):
         pass
     else:
-        return https_fn.Response("存在しない局IDが指定されました。", status=404)
+        return https_fn.Response({
+            "status": "error",
+            "reason": "存在しない局IDが指定されました。",
+            "code": 404
+        }, status=404)
 
     date_json: list = requests.get("https://api.radiko.jp/program/v4/date/{}/station/{}.json".format(
         ft.strftime("%Y%m%d"), channel
@@ -129,7 +154,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
             "code": 404
         }
     else:
-        print(program)
+        print({"metadata": program})
         with tempfile.TemporaryDirectory() as temp_dir:
             print({"output_directory": temp_dir})
             try:
@@ -155,5 +180,4 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
 
     firestore_client.collection("hello-radiko-data", "archives", channel) \
         .document(program["ft_string"]).set(firestore_doc)
-    print(firestore_doc)
-    return https_fn.Response(firestore_doc["status"], status=firestore_doc["code"])
+    return https_fn.Response(firestore_doc, status=firestore_doc["code"])
