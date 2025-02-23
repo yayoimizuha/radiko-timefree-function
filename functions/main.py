@@ -33,22 +33,17 @@ class MyLogger:
         logger.error(msg)
 
 
-def print_wrapper(func):
-    def wrapper(*args, **kwargs):
-        res:https_fn.Response = func(*args, **kwargs)
-        print(res.json)
-        return res
-
-    return wrapper
+def print_return(**kwargs) -> https_fn.Response:
+    print(kwargs)
+    return https_fn.Response(**kwargs)
 
 
-@print_wrapper
 @https_fn.on_request(timeout_sec=240)
 def download_timefree(req: https_fn.Request) -> https_fn.Response:
     if "ft" in req.args and "channel" in req.args:
         pass
     else:
-        return https_fn.Response({
+        return https_fn.Response(response={
             "status": "error",
             "reason": "ラジオ局のID(channel)と番組の開始時刻(RFC3339による):(ft)が必要です。",
             "code": 400
@@ -57,7 +52,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
         # print(ft_datetime)
         ft = ft_datetime
     else:
-        return https_fn.Response({
+        return print_return(response={
             "status": "error",
             "reason": "ftのフォーマットが違います。RFC3339が必要です。",
             "code": 400
@@ -80,10 +75,10 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
         print({"exist entry": firestore_doc})
         if (firestore_doc["status"] == "success" or
                 (firestore_doc["status"] == "error" and firestore_doc["code"] != 404)):
-            return https_fn.Response(firestore_doc, status=firestore_doc["code"])
+            return print_return(response=firestore_doc, status=firestore_doc["code"])
 
     if (full_xml := requests.get("https://radiko.jp/v3/station/region/full.xml")).status_code != 200:
-        return https_fn.Response({
+        return print_return(response={
             "status": "error",
             "reason": "https://radiko.jp/v3/station/region/full.xml が取得できません。",
             "code": full_xml.status_code
@@ -92,7 +87,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
     if channel in list(map(lambda tag: tag.text, full_xml.find_all("id"))):
         pass
     else:
-        return https_fn.Response({
+        return print_return(response={
             "status": "error",
             "reason": "存在しない局IDが指定されました。",
             "code": 404
@@ -180,4 +175,4 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
 
     firestore_client.collection("hello-radiko-data", "archives", channel) \
         .document(program["ft_string"]).set(firestore_doc)
-    return https_fn.Response(firestore_doc, status=firestore_doc["code"])
+    return print_return(response=firestore_doc, status=firestore_doc["code"])
