@@ -37,7 +37,8 @@ class MyLogger:
 
 def print_return(**kwargs) -> https_fn.Response:
     print(json.dumps(kwargs))
-    return https_fn.Response(json.dumps(kwargs["response"]), **kwargs)
+    kwargs["response"] = json.dumps(kwargs)
+    return https_fn.Response(**kwargs)
 
 
 @https_fn.on_request(timeout_sec=240)
