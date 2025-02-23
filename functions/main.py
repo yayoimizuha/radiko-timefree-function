@@ -59,6 +59,7 @@ def download_timefree(req: https_fn.Request) -> https_fn.Response:
                              .document(
                 (ft - timedelta(days=1)).strftime("%Y%m%d") + f"{ft.hour + 24:02d}" + ft.strftime("%M%S")
             ).get().to_dict())
+        print({"exist entry": firestore_doc})
         if (firestore_doc["status"] == "success" or
                 (firestore_doc["status"] == "error" and firestore_doc["code"] != 404)):
             return https_fn.Response(firestore_doc["status"], status=firestore_doc["code"])
