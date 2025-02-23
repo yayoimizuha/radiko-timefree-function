@@ -35,15 +35,15 @@ class MyLogger:
 
 def print_wrapper(func):
     def wrapper(*args, **kwargs):
-        res = func(*args, **kwargs)
-        print(res)
+        res:https_fn.Response = func(*args, **kwargs)
+        print(res.json)
         return res
 
     return wrapper
 
 
-@https_fn.on_request(timeout_sec=240)
 @print_wrapper
+@https_fn.on_request(timeout_sec=240)
 def download_timefree(req: https_fn.Request) -> https_fn.Response:
     if "ft" in req.args and "channel" in req.args:
         pass
