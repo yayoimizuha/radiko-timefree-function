@@ -1,3 +1,4 @@
+import json
 import re
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -34,7 +35,7 @@ class MyLogger:
 
 
 def print_return(**kwargs) -> https_fn.Response:
-    print(kwargs)
+    print(json.dumps(kwargs))
     return https_fn.Response(**kwargs)
 
 
