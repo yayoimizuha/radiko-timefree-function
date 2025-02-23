@@ -8,6 +8,7 @@ import yt_dlp
 from bs4 import BeautifulSoup
 from firebase_functions import https_fn, options
 from firebase_admin import initialize_app, storage, firestore
+from flask import jsonify
 from yt_dlp import DownloadError
 import logging
 
@@ -36,7 +37,7 @@ class MyLogger:
 
 def print_return(**kwargs) -> https_fn.Response:
     print(json.dumps(kwargs))
-    return https_fn.Response(**kwargs)
+    return https_fn.Response(json.dumps(kwargs["response"]), **kwargs)
 
 
 @https_fn.on_request(timeout_sec=240)
