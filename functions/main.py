@@ -38,7 +38,7 @@ class MyLogger:
 def print_return(**kwargs) -> https_fn.Response:
     print(json.dumps(kwargs))
     kwargs["response"] = json.dumps(kwargs["response"], ensure_ascii=False)
-    return https_fn.Response(**kwargs, mimetype="application/json", headers={"Access-Control-Allow-Origin": "hello-radiko.web.app"})
+    return https_fn.Response(**kwargs, mimetype="application/json", headers={"Access-Control-Allow-Origin": "https://hello-radiko.web.app"})
 
 
 @https_fn.on_request(timeout_sec=240)
