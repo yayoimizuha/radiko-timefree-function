@@ -38,11 +38,19 @@ class MyLogger:
 def print_return(**kwargs) -> https_fn.Response:
     print(json.dumps(kwargs))
     kwargs["response"] = json.dumps(kwargs["response"], ensure_ascii=False)
-    return https_fn.Response(**kwargs, mimetype="application/json")
+    return https_fn.Response(**kwargs, mimetype="application/json", headers={"Access-Control-Allow-Origin": "hello-radiko.web.app"})
 
 
 @https_fn.on_request(timeout_sec=240)
 def download_timefree(req: https_fn.Request) -> https_fn.Response:
+    if req.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+        return https_fn.Response(status=200, headers=headers)
+
     if "ft" in req.args and "channel" in req.args:
         pass
     else:
